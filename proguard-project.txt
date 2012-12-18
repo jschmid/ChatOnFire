@@ -1,0 +1,4 @@
+# To enable ProGuard in your project, edit project.properties
+-keepclassmembers class pro.schmid.android.androidonfire.FirebaseJavaScriptInterface {
+   public *;
+}
