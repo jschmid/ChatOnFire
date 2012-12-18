@@ -14,12 +14,12 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.inputmethod.EditorInfo;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.TextView.OnEditorActionListener;
-import android.widget.Toast;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -33,14 +33,20 @@ public class MainChatActivity extends Activity {
 	private Firebase mMessages;
 
 	private EditText mEt;
-	private LinearLayout mMessagesView;
+	private ListView mMessagesView;
+	private ArrayAdapter<String> mAdapter;
+
+	private String mMyName;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 		mEt = (EditText) findViewById(R.id.message_et);
-		mMessagesView = (LinearLayout) findViewById(R.id.messages);
+		mMessagesView = (ListView) findViewById(R.id.messages);
+
+		mAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1);
+		mMessagesView.setAdapter(mAdapter);
 
 		mFirebaseEngine = FirebaseEngine.getInstance();
 		mFirebaseEngine.setLoadedListener(mFirebaseLoadedListener);
@@ -73,11 +79,10 @@ public class MainChatActivity extends Activity {
 	}
 
 	private void sendMessage() {
-		String name = "Android";
 		String message = mEt.getText().toString();
 		mEt.setText("");
 		final JsonObject obj = new JsonObject();
-		obj.addProperty("name", name);
+		obj.addProperty("name", mMyName);
 		obj.addProperty("text", message);
 
 		mMessages.push(obj);
@@ -91,22 +96,16 @@ public class MainChatActivity extends Activity {
 			mChatFirebase = mFirebase.child("chat");
 			mMessages = mChatFirebase.child("messages");
 
-			// Last 5 comments
-			Query query = mMessages.limit(5).endAt();
+			// Last 10 comments
+			Query query = mMessages.limit(10).endAt();
 
 			query.on(EventType.child_added, messageAddedListener);
 			query.on(EventType.child_removed, messageRemovedListener);
 
-			query.once(EventType.child_removed, new DataEvent() {
-				@Override
-				public void callback(DataSnapshot snapshot, String prevChildName) {
-					Toast.makeText(MainChatActivity.this, "First child removed", Toast.LENGTH_SHORT).show();
-				}
-			});
-
-			Firebase presence = mChatFirebase.child("presence").child("Android");
+			Firebase presence = mChatFirebase.child("presence").push();
 			presence.removeOnDisconnect();
 			presence.set(new JsonPrimitive(true));
+			mMyName = presence.name().substring(1, 6);
 
 			Firebase counter = mChatFirebase.child("count");
 			counter.transaction(new Transaction() {
@@ -116,7 +115,6 @@ public class MainChatActivity extends Activity {
 						return new JsonPrimitive(1);
 					} else {
 						int count = obj.getAsInt();
-
 						return new JsonPrimitive(1 + count);
 					}
 				}
@@ -124,39 +122,36 @@ public class MainChatActivity extends Activity {
 		}
 	};
 
-	private final DataEvent messageAddedListener = new DataEvent() {
-		private int count = 0;
+	private String createChatLine(final DataSnapshot snapshot) {
+		final String name = snapshot.child("name").val().getAsString();
+		final String message = snapshot.child("text").val().getAsString();
+		final String line = String.format("%s: %s", name, message);
+		return line;
+	}
 
+	private final DataEvent messageAddedListener = new DataEvent() {
 		@Override
 		public void callback(final DataSnapshot snapshot, String prevChildName) {
-			++count;
-
-			final String name = snapshot.child("name").val().getAsString();
-			final String message = snapshot.child("text").val().getAsString();
+			final String line = createChatLine(snapshot);
 
 			runOnUiThread(new Runnable() {
 				@Override
 				public void run() {
-					String line = String.format("%s: %s\n", name, message);
-					TextView tv = new TextView(MainChatActivity.this);
-					tv.setText(line);
-					tv.setTag(snapshot.name());
-					mMessagesView.addView(tv);
+					mAdapter.add(line);
 				}
 			});
 		}
 	};
 
 	private final DataEvent messageRemovedListener = new DataEvent() {
-
 		@Override
 		public void callback(DataSnapshot snapshot, String prevChildName) {
-			final View messageToRemoveView = mMessagesView.findViewWithTag(snapshot.name());
+			final String line = createChatLine(snapshot);
 
 			runOnUiThread(new Runnable() {
 				@Override
 				public void run() {
-					mMessagesView.removeView(messageToRemoveView);
+					mAdapter.remove(line);
 				}
 			});
 		}

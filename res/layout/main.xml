@@ -3,17 +3,11 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent" >
 
-    <ScrollView
+    <ListView
+        android:id="@+id/messages"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_above="@+id/input_layout" >
-
-        <LinearLayout
-            android:id="@+id/messages"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical" />
-    </ScrollView>
+        android:layout_above="@+id/input_layout" />
 
     <LinearLayout
         android:id="@+id/input_layout"
@@ -26,7 +20,8 @@
             android:id="@+id/message_et"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1" >
+            android:layout_weight="1"
+            android:inputType="text" >
 
             <requestFocus />
         </EditText>
@@ -35,9 +30,7 @@
             android:id="@+id/send_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:layout_alignParentRight="true"
-            android:text="Send" />
+            android:text="@string/send" />
     </LinearLayout>
 
 </RelativeLayout>
